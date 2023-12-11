@@ -12,6 +12,7 @@ const customUserDetails = (user) => {
 
 //register
 const registerUser = asyncWrapper(async (req, res) => {
+  // Extracting data from request body
   const { name, email, password } = req.body;
 
   // Duplicate user handling
@@ -20,16 +21,26 @@ const registerUser = asyncWrapper(async (req, res) => {
     throw createCustomError("Email is already in use", 400);
   }
 
-  // New user
+  // Creating a new user
   const user = new User({ name, email, password });
   await user.save();
 
-  // user details
-  const userDetails = customUserDetails(user);
+  // Creating JWT payload
+  const payload = { user: user._id };
 
-  res
-    .status(201)
-    .send({ user: userDetails, message: "User created successfully" });
+  // Generating JWT with expire time
+  const token = jwt.sign(payload, process.env.JWT_SECRET_KEY, {
+    expiresIn: 360000,
+  });
+
+  // Setting the token in a cookie with HttpOnly & expire time
+  res.cookie("token", token, { httpOnly: true, expiresIn: 360000 });
+
+  // displaying user details without password
+  const { password: pass, ...rest } = user._doc;
+
+  // Sending the response with user details
+  res.status(201).json({ msg: "User created successfully", user: rest });
 });
 
 //login
